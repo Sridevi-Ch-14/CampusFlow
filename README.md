@@ -1,109 +1,168 @@
-# 🏫 CampusFlow - Campus Complaint & Service Request System
+# CampusFlow
 
-**CampusFlow** is a production-grade campus service-request and complaint management platform built for universities. It provides a complete, traceable lifecycle for facility problems (Wi-Fi, AC, plumbing, electrical, classroom equipment, etc.) with backend-enforced Role-Based Access Control (RBAC), controlled state machine workflows, dynamic SLA deadline calculations, in-app alert notifications, attachments, and real-time administrative analytics.
-
----
-
-## 🚀 Key Features
-
-1. **Role-Based Access Control (RBAC)**:
-   - 🎓 **Student**: Submit complaints, track status, comment, attach photos/docs, reopen resolved complaints, rate completed service.
-   - 🔧 **Staff**: View assigned tasks, accept assignments, update status, add resolution notes and evidence.
-   - 📊 **Admin**: View all complaints, assign/reassign to staff, change priority, manage categories and locations, view live KPI analytics and SLA breaches.
-   - 👑 **Super Admin**: Manage administrator accounts and system configurations.
-
-2. **Controlled State Machine Workflow**:
-   - Explicit transitions: `OPEN` → `ASSIGNED` → `IN_PROGRESS` → `RESOLVED` → `CLOSED`.
-   - Alternative transitions: `OPEN` → `REJECTED`, `RESOLVED` → `REOPENED`.
-   - Every status change logs an audit entry in `complaint_status_history`.
-
-3. **Dynamic SLA Engine**:
-   - Computes SLA deadlines based on priority (`CRITICAL`: 4h, `HIGH`: 24h, `MEDIUM`: 48h, `LOW`: 72h).
-   - Periodic background worker (Celery + Redis) scans and flags SLA-breached complaints.
-
-4. **Structured Relational Location Model**:
-   - Campus → Building → Floor → Room hierarchy.
-
-5. **Local & Object File Storage**:
-   - Stores file metadata in MySQL and actual files on disk/S3 storage.
+CampusFlow is an enterprise-grade campus service request and complaint management platform designed for university infrastructure maintenance. It delivers an end-to-end audit lifecycle for facility operations—including electrical, plumbing, HVAC, and network infrastructure—enforcing role-based access control (RBAC), finite-state machine workflows, dynamic SLA deadline calculations, real-time analytics, and asynchronous task scheduling.
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture Overview
 
-- **Frontend**: React 18, TypeScript, Vite, React Router v6, TanStack Query, Tailwind CSS, Lucide Icons.
-- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic.
-- **Database**: MySQL 8.0 with PyMySQL / aiomysql.
-- **Background Processing**: Celery & Redis.
+CampusFlow is architected with a decoupled service pattern:
+- **Client Layer**: Single-Page Application (SPA) built with React, TypeScript, Vite, and Tailwind CSS. State synchronization handled via TanStack Query.
+- **API Services Layer**: High-performance RESTful backend built with FastAPI, utilizing Pydantic v2 schemas for strict contract validation and JWT bearer authentication.
+- **Persistence Layer**: Relational data store managed through SQLAlchemy ORM and MySQL 8.0, supporting Alembic schema migrations.
+- **Asynchronous Task Queue**: Celery distributed task queue backed by Redis for SLA monitoring and automated escalation jobs.
 
 ---
 
-## 🔑 Demo Login Credentials
+## Key Features
+
+### Role-Based Access Control (RBAC)
+- **Student**: Submit service requests, track lifecycle status, participate in resolution comment threads, attach verification media, reopen disputed tickets, and submit service ratings.
+- **Staff (Departmental Maintenance)**: View assigned departmental tickets, accept tasks, log state updates, append resolution notes, and submit evidence.
+- **Admin**: System-wide oversight, manual ticket dispatch and reassignment, SLA configuration, location and category administration, and real-time operational KPI dashboards.
+- **Super Admin**: User account governance, system configuration, and administrative rights management.
+
+### Deterministic State Machine Workflow
+All tickets follow strict state machine transitions with persistent audit logging in `complaint_status_history`:
+- Primary Path: `OPEN` -> `ASSIGNED` -> `IN_PROGRESS` -> `RESOLVED` -> `CLOSED`
+- Exception Paths: `OPEN` -> `REJECTED`, `RESOLVED` -> `REOPENED`
+
+### Dynamic SLA Engine & Background Workers
+- Priority-driven resolution thresholds:
+  - Critical: 4 hours
+  - High: 24 hours
+  - Medium: 48 hours
+  - Low: 72 hours
+- Celery worker periodically evaluates active tickets, dynamically flagging breaches and sending system alerts.
+
+### Hierarchical Campus Location Modeling
+Relational location schema supporting nested spatial resolution: `Campus` -> `Building` -> `Floor` -> `Room`.
+
+---
+
+## Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, TypeScript, Vite, React Router v6, TanStack Query, Tailwind CSS, Lucide Icons |
+| **Backend** | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic |
+| **Database** | MySQL 8.0, PyMySQL, aiomysql |
+| **Distributed Systems** | Redis, Celery |
+| **DevOps & Containers** | Docker, Docker Compose |
+| **Testing** | Pytest, HTTPX |
+
+---
+
+## Default Test Accounts
 
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| 🎓 **Student** | `student@campusflow.edu` | `Password123!` |
-| 🔧 **Maintenance Staff (Electrical)** | `staff.electrical@campusflow.edu` | `Password123!` |
-| 🔧 **Maintenance Staff (Plumbing)** | `staff.plumbing@campusflow.edu` | `Password123!` |
-| 🔧 **Maintenance Staff (Wi-Fi)** | `staff.wifi@campusflow.edu` | `Password123!` |
-| 📊 **Admin** | `admin@campusflow.edu` | `Password123!` |
-| 👑 **Super Admin** | `superadmin@campusflow.edu` | `Password123!` |
+| Student | `student@campusflow.edu` | `Password123!` |
+| Maintenance Staff (Electrical) | `staff.electrical@campusflow.edu` | `Password123!` |
+| Maintenance Staff (Plumbing) | `staff.plumbing@campusflow.edu` | `Password123!` |
+| Maintenance Staff (Wi-Fi) | `staff.wifi@campusflow.edu` | `Password123!` |
+| Admin | `admin@campusflow.edu` | `Password123!` |
+| Super Admin | `superadmin@campusflow.edu` | `Password123!` |
 
-*(Note: The sign-in page features one-click buttons to log in as any role instantly!)*
+*(The login interface also provides quick-fill options for testing each role immediately.)*
 
 ---
 
-## 📦 Local Quickstart Instructions
+## Repository Structure
+
+```text
+CampusFlow/
+├── backend/
+│   ├── alembic/              # Database migration configurations
+│   ├── app/
+│   │   ├── api/v1/           # Modular REST API route handlers
+│   │   ├── core/             # Configuration, database engine, security
+│   │   ├── db/               # Initial seed data script
+│   │   ├── models/           # SQLAlchemy ORM entity models
+│   │   ├── schemas/          # Pydantic v2 data validation schemas
+│   │   ├── services/         # Business logic layer
+│   │   ├── workers/          # Celery worker application and background tasks
+│   │   └── main.py           # FastAPI application entry point
+│   ├── tests/                # Automated Pytest suite
+│   ├── Dockerfile            # Container definition for backend services
+│   └── requirements.txt      # Python package dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # Reusable UI, layout, and domain components
+│   │   ├── context/          # Authentication and application context
+│   │   ├── pages/            # View pages for Student, Staff, and Admin
+│   │   ├── services/         # Axios API client integrations
+│   │   └── types/            # TypeScript interface definitions
+│   ├── package.json          # Node.js dependencies and scripts
+│   └── vite.config.ts        # Vite configuration
+├── docker-compose.yml        # Multi-service composition definition
+├── .env.example              # Sample environment configuration template
+└── README.md                 # Project documentation
+```
+
+---
+
+## Local Development Setup
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
 - MySQL Server or Docker
 
-### 1. Backend Setup
-
-Start MySQL container via Docker Compose (or start local MySQL service):
+### 1. Database & Cache Services
+Using Docker Compose to launch MySQL and Redis:
 ```bash
-docker-compose up -d db
+docker-compose up -d db redis
 ```
 
-Run FastAPI Backend:
+### 2. Backend Setup
 ```bash
 cd backend
-python -m venv venv
-# Activate virtual environment:
-# Windows: venv\Scripts\activate
-# Linux/macOS: source venv/bin/activate
 
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 
-# Run FastAPI backend (Auto-creates database & seeds demo data on startup!)
+# Start backend development server (automatically seeds demo data on initial launch)
 uvicorn app.main:app --reload --port 8000
 ```
-- Interactive API Documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Interactive Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Alternative ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
-### 2. Frontend Setup
+### 3. Frontend Setup
 ```bash
 cd frontend
+
+# Install package dependencies
 npm install
+
+# Start development server
 npm run dev
 ```
-- Web Application UI: [http://localhost:5173](http://localhost:5173)
+- Web Application: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
-To spin up MySQL 8.0, Redis, FastAPI Backend, and Celery Worker together:
+To launch the complete application stack (MySQL 8.0, Redis, FastAPI Backend, and Celery Worker):
+
 ```bash
 docker-compose up --build
 ```
 
 ---
 
-## 🧪 Automated Testing
+## Testing
 
-Backend test suite with Pytest:
+Run the automated test suite with Pytest:
+
 ```bash
 cd backend
 pytest -v
